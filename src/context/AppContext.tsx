@@ -119,10 +119,10 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: React.ReactNode; workspaceActive?: boolean }> = ({ children, workspaceActive = true }) => {
   const { user } = useAuth();
   const [storageMode, setStorageModeState] = useState<StorageMode>(() => {
-    return user ? 'account' : getStoredMode();
+    return user ? 'account' : workspaceActive ? getStoredMode() : 'guest';
   });
 
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -251,6 +251,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Keyboard navigation
   useEffect(() => {
+    if (!workspaceActive) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger shortcuts if user is typing in input/textarea/select
       const activeEl = document.activeElement;
@@ -301,7 +302,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSearchOpen, isNotificationsOpen, isMarkPaidOpen, isUndoPaidOpen, isAddPlanOpen, selectedPlanId]);
+  }, [workspaceActive, isSearchOpen, isNotificationsOpen, isMarkPaidOpen, isUndoPaidOpen, isAddPlanOpen, selectedPlanId]);
 
   const nextMonth = () => {
     const [y, m] = selectedMonthKey.split('-').map(Number);

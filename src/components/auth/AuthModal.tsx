@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import {
@@ -23,13 +23,16 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export const AuthModal: React.FC = () => {
+export const AuthModal: React.FC<{ presentation?: 'modal' | 'page' }> = ({ presentation = 'modal' }) => {
   const {
     authModalOpen,
     closeAuthModal,
     authModalTab,
     isConfigured,
+    continueAsGuest,
   } = useAuth();
+  const isPage = presentation === 'page';
+  const Heading = isPage ? 'h1' : 'h2';
 
   const { setStorageMode, updateSettings, settings } = useApp();
 
@@ -53,11 +56,25 @@ export const AuthModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  if (!authModalOpen) return null;
+  useEffect(() => {
+    if (authModalOpen || isPage) {
+      setMode(authModalTab);
+      setError(null);
+      setInfoMessage(null);
+    }
+  }, [authModalOpen, authModalTab, isPage]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timeout = window.setTimeout(() => setResendCooldown(value => value - 1), 1000);
+    return () => window.clearTimeout(timeout);
+  }, [resendCooldown]);
+
+  if (!isPage && !authModalOpen) return null;
 
   const handleContinueAsGuest = () => {
     setStorageMode('guest');
-    closeAuthModal();
+    continueAsGuest();
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -127,16 +144,6 @@ export const AuthModal: React.FC = () => {
       setOtpSent(true);
       setInfoMessage(`6-digit verification code sent to ${fullPhone}.`);
       setResendCooldown(60);
-
-      const interval = setInterval(() => {
-        setResendCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
     } catch (err: any) {
       setError(err?.message || 'Failed to send OTP code. Ensure SMS provider is active in Supabase.');
     } finally {
@@ -175,29 +182,41 @@ export const AuthModal: React.FC = () => {
     }
 
     try {
-      await signInWithGoogleOAuth();
+      const { error: googleError } = await signInWithGoogleOAuth();
+      if (googleError) throw googleError;
     } catch (err: any) {
       setError(err?.message || 'Google sign in failed.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-10">
+    <div
+      role={isPage ? 'main' : undefined}
+      className={isPage
+        ? 'min-h-screen flex items-center justify-center bg-[#F4F7F5] dark:bg-[#111915] p-4 sm:p-8'
+        : 'fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-10'}
+    >
       {/* Backdrop */}
-      <div
+      {!isPage && <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         onClick={closeAuthModal}
-      />
+      />}
 
       {/* Split-screen Modal Window */}
-      <div className="relative z-10 w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[28px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row max-h-[92vh]">
+      <div
+        role={isPage ? undefined : 'dialog'}
+        aria-modal={isPage ? undefined : true}
+        aria-labelledby="auth-heading"
+        className={`relative z-10 w-full bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row ${isPage ? 'max-w-5xl shadow-lg' : 'max-w-4xl shadow-2xl max-h-[92vh]'}`}
+      >
         {/* Close Button top right */}
-        <button
+        {!isPage && <button
           onClick={closeAuthModal}
+          aria-label="Close sign-in dialog"
           className="absolute top-4 right-4 z-20 p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
         >
           <X className="w-5 h-5" />
-        </button>
+        </button>}
 
         {/* LEFT COLUMN: Finance Photograph from Design */}
         <div className="hidden md:block md:w-1/2 relative bg-[#143D2B] overflow-hidden p-6">
@@ -205,7 +224,7 @@ export const AuthModal: React.FC = () => {
             <img
               src="/auth-finance-photo.jpg"
               alt="Finance calendar and calculator"
-              className="w-full h-full object-cover object-center"
+              className="absolute inset-0 w-full h-full object-cover object-center"
             />
             {/* Subtle aesthetic overlay vignette */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
@@ -233,6 +252,7 @@ export const AuthModal: React.FC = () => {
               
               <button
                 onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+                aria-label={settings.theme === 'dark' ? 'Use light mode' : 'Use dark mode'}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 {settings.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -241,9 +261,9 @@ export const AuthModal: React.FC = () => {
 
             {/* Header: Title & Subtitle */}
             <div className="mt-2">
-              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {mode === 'signup' ? 'Sign up' : 'Welcome back'}
-              </h2>
+              <Heading id="auth-heading" className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {mode === 'signup' ? 'Sign up' : isPage ? 'Sign in to Duewise' : 'Welcome back'}
+              </Heading>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {mode === 'signup'
                   ? 'Create a Duewise account with your email or mobile number.'
@@ -263,12 +283,12 @@ export const AuthModal: React.FC = () => {
 
             {/* Error or Info message */}
             {error && (
-              <div className="mt-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold">
+              <div role="alert" className="mt-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold">
                 {error}
               </div>
             )}
             {infoMessage && (
-              <div className="mt-4 p-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+              <div role="status" className="mt-4 p-3 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>{infoMessage}</span>
               </div>
@@ -307,11 +327,13 @@ export const AuthModal: React.FC = () => {
             {activeTab === 'email' ? (
               <form onSubmit={handleEmailSubmit} className="mt-5 flex flex-col gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label htmlFor="auth-email" className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Email
                   </label>
                   <input
+                    id="auth-email"
                     type="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
@@ -321,7 +343,7 @@ export const AuthModal: React.FC = () => {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label htmlFor="auth-password" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Password
                     </label>
                     {mode === 'signin' && (
@@ -336,6 +358,8 @@ export const AuthModal: React.FC = () => {
                   </div>
                   <div className="relative">
                     <input
+                      id="auth-password"
+                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -345,6 +369,7 @@ export const AuthModal: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword(prev => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -376,11 +401,12 @@ export const AuthModal: React.FC = () => {
                 {!otpSent ? (
                   <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
                     <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      <label htmlFor="auth-phone" className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                         Mobile number
                       </label>
                       <div className="flex gap-2">
                         <select
+                          aria-label="Country code"
                           value={countryCode}
                           onChange={(e) => setCountryCode(e.target.value)}
                           className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1B5B3E]"
@@ -391,11 +417,13 @@ export const AuthModal: React.FC = () => {
                           <option value="+971">+971 (UAE)</option>
                         </select>
                         <input
+                          id="auth-phone"
                           type="tel"
+                          autoComplete="tel-national"
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value)}
                           placeholder="98765 43210"
-                          className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1B5B3E]"
+                          className="min-w-0 flex-1 px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1B5B3E]"
                         />
                       </div>
                       <span className="text-[0.65rem] text-slate-400 mt-1 block">
@@ -421,11 +449,14 @@ export const AuthModal: React.FC = () => {
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
                     <div>
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      <label htmlFor="auth-otp" className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                         Enter 6-digit code
                       </label>
                       <input
+                        id="auth-otp"
                         type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
@@ -508,7 +539,7 @@ export const AuthModal: React.FC = () => {
           {/* Bottom Switch Mode & Continue as Guest */}
           <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3 text-center">
             <button
-              onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
+              onClick={() => { setMode(mode === 'signup' ? 'signin' : 'signup'); setError(null); setInfoMessage(null); }}
               className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
             >
               {mode === 'signup' ? (
@@ -520,6 +551,8 @@ export const AuthModal: React.FC = () => {
 
             <button
               onClick={handleContinueAsGuest}
+              disabled={loading}
+              aria-label="Continue as guest"
               className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex flex-col items-center"
             >
               <span className="font-bold flex items-center gap-1 text-emerald-800 dark:text-emerald-400">

@@ -7,6 +7,9 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
+  guestAccessGranted: boolean;
+  continueAsGuest: () => void;
+  authError: string | null;
   authModalOpen: boolean;
   authModalTab: 'signin' | 'signup';
   openAuthModal: (tab?: 'signin' | 'signup') => void;
@@ -22,6 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'signin' | 'signup'>('signin');
+  // A stored data mode does not count as choosing guest access on a new visit.
+  const [guestAccessGranted, setGuestAccessGranted] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -29,21 +35,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Check active session
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+    let mounted = true;
+    let receivedAuthEvent = false;
+    const applySession = (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+      receivedAuthEvent = true;
+      applySession(nextSession);
+      if (nextSession || event === 'SIGNED_OUT') {
+        setGuestAccessGranted(false);
+        setAuthModalOpen(false);
+        setAuthModalTab('signin');
+        setAuthError(null);
+      }
     });
 
-    // Listen to auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (mounted && !receivedAuthEvent) applySession(error ? null : data.session);
+    }).catch(() => {
+      if (mounted && !receivedAuthEvent) applySession(null);
     });
 
     return () => {
+      mounted = false;
       authListener.subscription.unsubscribe();
     };
   }, []);
@@ -57,10 +76,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModalOpen(false);
   };
 
+  const continueAsGuest = () => {
+    setGuestAccessGranted(true);
+    setAuthModalOpen(false);
+    setAuthError(null);
+  };
+
   const signOut = async () => {
-    await signOutUser();
-    setUser(null);
-    setSession(null);
+    setAuthError(null);
+    try {
+      const result = await signOutUser();
+      if (result?.error) throw result.error;
+      setGuestAccessGranted(false);
+      setAuthModalOpen(false);
+      setAuthModalTab('signin');
+      setUser(null);
+      setSession(null);
+    } catch {
+      setAuthError('Could not sign out. Check your connection and try signing out again.');
+    }
   };
 
   return (
@@ -70,6 +104,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         loading,
         isConfigured: isSupabaseConfigured,
+        guestAccessGranted,
+        continueAsGuest,
+        authError,
         authModalOpen,
         authModalTab,
         openAuthModal,

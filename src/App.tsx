@@ -1,5 +1,5 @@
 import React from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Layout } from './components/layout/Layout';
 import { OverviewView } from './components/overview/OverviewView';
@@ -19,6 +19,7 @@ import { AuthModal } from './components/auth/AuthModal';
 
 const AppContent: React.FC = () => {
   const { activeTab } = useApp();
+  const { authError } = useAuth();
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -41,6 +42,7 @@ const AppContent: React.FC = () => {
 
   return (
     <Layout>
+      {authError && <div role="alert" className="mb-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-800">{authError}</div>}
       {renderActiveView()}
 
       {/* Global Modals & Drawers */}
@@ -55,12 +57,37 @@ const AppContent: React.FC = () => {
   );
 };
 
+const AppEntry: React.FC = () => {
+  const { user, loading, guestAccessGranted } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-[#F4F7F5] dark:bg-[#111915]">
+        <p role="status" className="text-sm text-slate-600 dark:text-slate-300">Checking your session…</p>
+      </main>
+    );
+  }
+
+  if (!user && !guestAccessGranted) {
+    return (
+      <AppProvider key="entry" workspaceActive={false}>
+        <AuthModal presentation="page" />
+      </AppProvider>
+    );
+  }
+
+  // Remount workspace state when identity changes; never carry account data into guest mode.
+  return (
+    <AppProvider key={user ? `account-${user.id}` : 'guest'}>
+      <AppContent />
+    </AppProvider>
+  );
+};
+
 export default function App() {
   return (
     <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <AppEntry />
     </AuthProvider>
   );
 }
