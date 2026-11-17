@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`relative z-20 shrink-0 bg-brand-dark min-h-screen text-white flex flex-col justify-between transition-all duration-300 ease-in-out border-r border-emerald-900/30 ${
+      className={`relative z-20 shrink-0 h-full min-h-0 text-white flex flex-col justify-between transition-all duration-300 ease-in-out border-r border-emerald-900/30 ${
         collapsed ? 'w-20 px-3 py-6' : 'w-64 px-4 py-6'
       }`}
     >
@@ -176,7 +176,7 @@ export const Sidebar: React.FC = () => {
                 {!collapsed && item.badge !== null && (
                   <span
                     className={`text-[0.72rem] px-1.5 py-0.2 rounded-full font-medium ${
-                      isActive ? 'bg-brand-dark/10 text-brand-dark' : item.badgeColor
+                      isActive ? '/10 text-brand-dark' : item.badgeColor
                     }`}
                   >
                     {item.badge}

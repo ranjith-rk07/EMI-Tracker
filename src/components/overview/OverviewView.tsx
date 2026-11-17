@@ -77,16 +77,18 @@ export const OverviewView: React.FC = () => {
       {/* Attention Banner if needed */}
       <AttentionBanner />
 
-      {/* Next Payment Hero Card */}
-      <NextPaymentCard />
-
-      {/* 4 Metric Cards */}
-      <MetricsGrid />
+      {/* Primary dashboard area — matches the Figma layout: hero on the left, metrics on the right. */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
+          <NextPaymentCard />
+        </div>
+        <MetricsGrid />
+      </div>
 
       {/* Two Column Layout: Main Schedule & Commitment vs Right Progress & AI Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Column (2 Cols on lg) */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
+        <div className="xl:col-span-2 flex flex-col gap-6">
           <PaymentScheduleTable />
           <MonthlyCommitmentChart />
         </div>

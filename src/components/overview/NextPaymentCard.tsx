@@ -22,7 +22,7 @@ export const NextPaymentCard: React.FC = () => {
 
   if (!nextInst) {
     return (
-      <div className="w-full mb-6 p-6 rounded-3xl bg-gradient-to-br from-[#184E38] to-[#103726] text-white shadow-lg border border-emerald-800/40">
+      <div className="w-full p-6 rounded-3xl bg-gradient-to-br from-[#2B7A5D] to-[#1F5A46] text-white shadow-lg border border-emerald-800/40">
         <div className="flex flex-col items-center justify-center py-6 text-center">
           <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
             <Check className="w-6 h-6 text-emerald-300" />
@@ -50,7 +50,7 @@ export const NextPaymentCard: React.FC = () => {
   const isCurrentMonthView = currentReferenceDate.startsWith(selectedMonthKey);
 
   return (
-    <div className="w-full mb-6 rounded-3xl bg-gradient-to-br from-[#184E38] via-[#144431] to-[#0E3324] text-white p-5 md:p-6 shadow-xl border border-emerald-700/30 flex flex-col justify-between gap-6 relative overflow-hidden">
+    <div className="w-full h-full min-h-[360px] rounded-3xl bg-gradient-to-br from-[#2B7A5D] via-[#286F55] to-[#1F5A46] text-white p-5 md:p-6 shadow-xl border border-emerald-700/30 flex flex-col justify-between gap-6 relative overflow-hidden">
       {/* Decorative subtle background circle */}
       <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
 

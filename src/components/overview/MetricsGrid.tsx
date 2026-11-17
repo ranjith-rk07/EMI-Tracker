@@ -25,7 +25,7 @@ export const MetricsGrid: React.FC = () => {
   const segmentColors = ['bg-emerald-600', 'bg-amber-500', 'bg-teal-500', 'bg-lime-600', 'bg-cyan-600'];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* 1. Due in Month */}
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-card flex flex-col justify-between transition-colors">
         <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
